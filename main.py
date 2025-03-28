@@ -77,74 +77,76 @@ def delete_task(task_id: str):
 # Google Calendar OAuth2 & Sync
 # ================================
 
+#comment out will add google env later
+
 # Environment variables for Google OAuth client credentials
-CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
-CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-REDIRECT_URI = "http://localhost:8000/calendar/callback"  # Where Google redirects after login
-SCOPES = ["https://www.googleapis.com/auth/calendar"]     # Permissions requested
+# CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+# CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+# REDIRECT_URI = "http://localhost:8000/calendar/callback"  # Where Google redirects after login
+# SCOPES = ["https://www.googleapis.com/auth/calendar"]     # Permissions requested
 
 # Start Google OAuth2 flow
-@app.get("/calendar/auth")
-def calendar_auth():
-    flow = Flow.from_client_config(
-        {
-            "web": {
-                "client_id": CLIENT_ID,
-                "client_secret": CLIENT_SECRET,
-                "redirect_uris": [REDIRECT_URI],
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-            }
-        },
-        scopes=SCOPES
-    )
-    flow.redirect_uri = REDIRECT_URI
-    auth_url, _ = flow.authorization_url(prompt="consent", access_type="offline", include_granted_scopes="true")
-    return RedirectResponse(auth_url)
+# @app.get("/calendar/auth")
+# def calendar_auth():
+#     flow = Flow.from_client_config(
+#         {
+#             "web": {
+#                 "client_id": CLIENT_ID,
+#                 "client_secret": CLIENT_SECRET,
+#                 "redirect_uris": [REDIRECT_URI],
+#                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+#                 "token_uri": "https://oauth2.googleapis.com/token",
+#             }
+#         },
+#         scopes=SCOPES
+#     )
+#     flow.redirect_uri = REDIRECT_URI
+#     auth_url, _ = flow.authorization_url(prompt="consent", access_type="offline", include_granted_scopes="true")
+#     return RedirectResponse(auth_url)
 
-# Handle OAuth2 callback and store access/refresh tokens
-@app.get("/calendar/callback")
-def calendar_callback(request: Request):
-    code = request.query_params.get("code")
-    flow = Flow.from_client_config(
-        {
-            "web": {
-                "client_id": CLIENT_ID,
-                "client_secret": CLIENT_SECRET,
-                "redirect_uris": [REDIRECT_URI],
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-            }
-        },
-        scopes=SCOPES,
-    )
-    flow.redirect_uri = REDIRECT_URI
-    flow.fetch_token(code=code)
+# # Handle OAuth2 callback and store access/refresh tokens
+# @app.get("/calendar/callback")
+# def calendar_callback(request: Request):
+#     code = request.query_params.get("code")
+#     flow = Flow.from_client_config(
+#         {
+#             "web": {
+#                 "client_id": CLIENT_ID,
+#                 "client_secret": CLIENT_SECRET,
+#                 "redirect_uris": [REDIRECT_URI],
+#                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+#                 "token_uri": "https://oauth2.googleapis.com/token",
+#             }
+#         },
+#         scopes=SCOPES,
+#     )
+#     flow.redirect_uri = REDIRECT_URI
+#     flow.fetch_token(code=code)
 
-    creds = flow.credentials
-    # Save or update tokens in MongoDB
-    tokens_collection.update_one({}, {"$set": creds_to_dict(creds)}, upsert=True)
-    return {"message": "Google Calendar synced!"}
+#     creds = flow.credentials
+#     # Save or update tokens in MongoDB
+#     tokens_collection.update_one({}, {"$set": creds_to_dict(creds)}, upsert=True)
+#     return {"message": "Google Calendar synced!"}
 
-# Fetch calendar events using stored credentials
-@app.get("/calendar/events")
-def list_events():
-    token_data = tokens_collection.find_one()
-    if not token_data:
-        raise HTTPException(status_code=401, detail="Google auth required")
+# # Fetch calendar events using stored credentials
+# @app.get("/calendar/events")
+# def list_events():
+#     token_data = tokens_collection.find_one()
+#     if not token_data:
+#         raise HTTPException(status_code=401, detail="Google auth required")
 
-    creds = Credentials.from_authorized_user_info(token_data, SCOPES)
-    service = googleapiclient.discovery.build('calendar', 'v3', credentials=creds)
-    events_result = service.events().list(calendarId='primary', maxResults=10).execute()
-    return events_result.get('items', [])
+#     creds = Credentials.from_authorized_user_info(token_data, SCOPES)
+#     service = googleapiclient.discovery.build('calendar', 'v3', credentials=creds)
+#     events_result = service.events().list(calendarId='primary', maxResults=10).execute()
+#     return events_result.get('items', [])
 
-# Helper function to convert credentials object to dictionary for DB storage
-def creds_to_dict(creds):
-    return {
-        "token": creds.token,
-        "refresh_token": creds.refresh_token,
-        "token_uri": creds.token_uri,
-        "client_id": creds.client_id,
-        "client_secret": creds.client_secret,
-        "scopes": creds.scopes,
-    }
+# # Helper function to convert credentials object to dictionary for DB storage
+# def creds_to_dict(creds):
+#     return {
+#         "token": creds.token,
+#         "refresh_token": creds.refresh_token,
+#         "token_uri": creds.token_uri,
+#         "client_id": creds.client_id,
+#         "client_secret": creds.client_secret,
+#         "scopes": creds.scopes,
+#     }
